@@ -21,6 +21,7 @@ from AppKit import NSWorkspace, NSStatusBar, NSMenuItem, NSMenu, NSImage, \
         NSApplication, NSThread, NSAutoreleasePool, NSUserDefaults, NSLog
 from Foundation import NSURL, NSObject, NSTimer, NSDate
 from PyObjCTools import AppHelper
+from PyObjCTools import Debugging
 from waveapi import waveservice
 import Growl
 import keyring
@@ -54,7 +55,6 @@ class WaveGrowl(NSObject):
     statusbar = None
     state = 'enabled'
     timer = None
-    visible = False
     notified_state = {}
     state_dir = os.path.expanduser('~/Library/Application Support/WaveGrowl')
 
@@ -82,34 +82,24 @@ class WaveGrowl(NSObject):
         self.set_status()
         self.set_check_frequency(self.frequency)
 
-    def applicationShouldHandleReopen_hasVisibleWindows_(self, notification,
-                                                         visible):
-        self.set_status_item_visibility(True)
-
     def applicationDidFinishLaunching_(self, notification):
         self.defaults = NSUserDefaults.standardUserDefaults()
         self.notifier = Notifier()
 
+        self.load_state()
         # Build status bar icon
         self.create_status_item()
-        if not self.visible:
-            self.set_status_item_visibility(self.visible)
-
-    def set_status_item_visibility(self, visible):
-        self.create_status_item()
-        self.save_state()
-        self.visible = visible
 
     def create_status_item(self):
         statusbar = NSStatusBar.systemStatusBar()
-        self.statusitem = statusbar.statusItemWithLength_(
+        self.status_item = statusbar.statusItemWithLength_(
             NSVariableStatusItemLength)
         self.images['enabled'] = NSImage.alloc().initByReferencingFile_(
             self.MENUBAR_ICON)
         self.images['disabled'] = NSImage.alloc().initByReferencingFile_(
             self.DISABLED_MENUBAR_ICON)
-        self.statusitem.setHighlightMode_(1)
-        self.statusitem.setToolTip_('Wave Growl Notifier')
+        self.status_item.setHighlightMode_(1)
+        self.status_item.setToolTip_('Wave Growl Notifier')
 
         self.menu = NSMenu.alloc().init()
         self.status_menu_item = NSMenuItem.alloc() \
@@ -123,7 +113,7 @@ class WaveGrowl(NSObject):
         menu_item = NSMenuItem.alloc() \
                 .initWithTitle_action_keyEquivalent_('Quit', 'terminate:', '')
         self.menu.addItem_(menu_item)
-        self.statusitem.setMenu_(self.menu)
+        self.status_item.setMenu_(self.menu)
 
         frequency_menu = NSMenu.alloc().init()
         for minute in self.MINUTES:
@@ -177,7 +167,7 @@ class WaveGrowl(NSObject):
     def tick_(self, notification):
         self.set_status('Checking...')
         try:
-            self.send_notifications()
+            self.check_status()
             self.enable(True)
             self.set_status()
         except Exception, e:
@@ -185,11 +175,13 @@ class WaveGrowl(NSObject):
             self.enable(False, and_frequency_menu=False)
             self.set_status('Fetch failed.')
 
-    def send_notifications(self):
+    def check_status(self):
         result = self.service.search(
-            'in:inbox is:changed is:unread past:2days', num_results=100)
+            'in:inbox is:unread', num_results=100)
+        total_count = 0
         notified_count = 0
         for digest in result.digests:
+            total_count += 1
             last_notification = self.notified_state.get(digest.wave_id, 0)
             if notified_count < 10 \
                     and last_notification < digest.last_modified:
@@ -203,23 +195,26 @@ class WaveGrowl(NSObject):
                 self.notified_state[digest.wave_id] = digest.last_modified
         self.save_state()
         self.set_status()
+        if total_count:
+            self.status_item.setAttributedTitle_('%i' % total_count)
+        else:
+            self.status_item.setAttributedTitle_('')
 
     def load_state(self):
+        self.notified_state = {}
         try:
             path = os.path.join(self.state_dir, 'State.json')
             with open(path) as fd:
                 state = json.load(fd)
-                self.visible = state['visible']
                 self.notified_state = state['notified_state']
         except Exception, e:
-            NSLog('Failed to load state: %s', e)
+            NSLog('Failed to load state: %s' % e)
 
     def save_state(self):
         path = self.state_dir
         if not os.path.exists(path):
             os.makedirs(path)
-        state = {'notified_state': self.notified_state,
-                 'visible': self.visible}
+        state = {'notified_state': self.notified_state}
         with open(os.path.join(path, 'State.json'), 'wb') as fd:
             json.dump(state, fd, indent=True)
 
@@ -227,7 +222,7 @@ class WaveGrowl(NSObject):
         if and_frequency_menu:
             self.frequency_menu_item.setEnabled_(enabled)
         image = self.images['enabled' if enabled else 'disabled']
-        self.statusitem.setImage_(image)
+        self.status_item.setImage_(image)
 
     def set_status(self, status=None):
         self.status_menu_item.setTitle_(status or 'Wave Growl Notifier')
@@ -288,6 +283,7 @@ def get_authenticated_service(notifier):
 
 
 def main():
+    Debugging.installVerboseExceptionHandler()
     app = NSApplication.sharedApplication()
     delegate = WaveGrowl.alloc().init()
     app.setDelegate_(delegate)

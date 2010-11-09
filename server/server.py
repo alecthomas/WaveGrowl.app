@@ -17,7 +17,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 
 
-class OAuthVerififications(db.Model):
+class OAuthVerifications(db.Model):
     oauth_token = db.StringProperty(required=True)
     oauth_verifier = db.StringProperty(required=True)
 
@@ -46,7 +46,7 @@ class OAuthEndpoint(webapp.RequestHandler):
         if not oauth_verifier or not oauth_token:
             self.error(400)
             return
-        verification = OAuthVerififications(oauth_token=oauth_token,
+        verification = OAuthVerifications(oauth_token=oauth_token,
                                             oauth_verifier=oauth_verifier)
         verification.put()
         self.response.headers['Content-Type'] = 'text/html'
@@ -67,7 +67,7 @@ class OAuthEndpoint(webapp.RequestHandler):
 
 class OAuthVerifier(webapp.RequestHandler):
     def get(self, token):
-        verification = OAuthVerififications \
+        verification = OAuthVerifications \
                 .all() \
                 .filter('oauth_token =', token) \
                 .get()

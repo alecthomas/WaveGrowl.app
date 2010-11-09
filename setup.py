@@ -14,7 +14,8 @@ setup(
     author_email='alec@swapoff.org',
     description='Google Wave Growl notifier',
     version='0.1',
-    data_files=['wavegrowl.png', 'wavegrowlmenubar.png'],
+    data_files=['wavegrowl.png', 'wavegrowlmenubar.png',
+                'wavegrowlmenubardisabled.png'],
     options=dict(py2app=dict(
         plist=dict(
             LSUIElement=True,
