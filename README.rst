@@ -1,7 +1,7 @@
 Wave Growl Notifications
 ========================
 I worked on the Wave team. I wrote this a week before Wave was cancelled. Good
-times.
+timing!
 
 This is mostly now only useful as an example of Cocoa Python code, and using
 three-legged OAuth from a desktop application.
