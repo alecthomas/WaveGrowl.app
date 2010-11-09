@@ -106,7 +106,7 @@ class WaveGrowlAppDelegate(NSObject):
 
     def tick_(self, notification):
         notify_on_changed_waves(self.notifier, self.service,
-                                'in:inbox is:unread')
+                                'in:inbox is:changed is:unread past:2days')
 
 
 def get_authenticated_service(notifier):
