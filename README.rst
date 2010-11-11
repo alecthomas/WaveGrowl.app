@@ -10,3 +10,10 @@ Three-legged OAuth was a giant PITA. To make it work, a server component waits
 for a verifier token from the Google authentication process, which is stored in
 the AppEngine datastore. WaveGrowl polls the server component repeatedly until
 a timeout, or the auth token is verified.
+
+Technology Used
+---------------
+* Python.
+* Three-legged OAuth.
+* Py2App.
+* Cocoa.
